@@ -65,3 +65,33 @@ Abrí http://localhost:3000
 ## Nota de seguridad
 
 La app no tiene login (es de uso personal). Las políticas RLS permiten leer/escribir con la `anon key`, así que **no compartas la URL pública del deploy**. Si más adelante querés cerrarla, se puede agregar Supabase Auth.
+
+---
+
+## Actualización v2 — Dólares, congelar conversión y login
+
+### 1. Correr la migración en Supabase
+SQL Editor → New query → pegá y ejecutá `supabase_migration_v2.sql`.
+Es seguro sobre la base que ya tenés (no borra datos). Agrega:
+- Soporte de moneda (ARS/USD) en gastos de tarjeta + conversión a pesos.
+- Congelar conversiones por mes.
+- Cierra el acceso: a partir de ahora **solo usuarios logueados** pueden ver/editar.
+
+### 2. Crear tu usuario (obligatorio antes de probar)
+1. Supabase → **Authentication → Users → Add user → Create new user**.
+2. Email: tu email. Password: la que elijas. Activá **Auto Confirm User**.
+3. Supabase → **Authentication → Providers → Email** → desactivá
+   **"Allow new users to sign up"** (deja cerrado el registro: solo existís vos).
+
+> Importante: después de la migración, sin login no se ve nada. Si no creaste
+> el usuario primero, no vas a poder entrar.
+
+### 3. Cómo funciona el dólar
+- Al cargar un gasto de tarjeta elegís **Pesos (ARS)** o **Dólares (USD)**.
+- Si es USD, se muestra una columna extra con la conversión a pesos usando el
+  **dólar tarjeta** de dolarapi.com (se actualiza solo).
+- Botón **"Congelar conversiones del mes"**: fija el tipo de cambio actual para
+  todos los gastos USD de ese mes (ideal cuando vas a pagar). Queda marcado con
+  un copo de nieve ❄️. Podés **descongelar** cuando quieras.
+
+No hace falta ninguna variable de entorno nueva: seguís con las dos de Supabase.

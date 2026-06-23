@@ -6,19 +6,37 @@ import PersonalExpenses from '../components/PersonalExpenses';
 import HouseExpenses from '../components/HouseExpenses';
 import Cards from '../components/Cards';
 import Stats from '../components/Stats';
-import { MONTH_NAMES } from '../lib/helpers';
-import { formatMoney } from '../lib/helpers';
+import Login from '../components/Login';
+import { MONTH_NAMES, formatMoney } from '../lib/helpers';
 import { exportToExcel } from '../lib/exportExcel';
+import { getDolarTarjeta } from '../lib/dolar';
+import { supabase } from '../lib/supabaseClient';
 import * as db from '../lib/data';
 
 export default function Home() {
-  const [tree, setTree] = useState([]);          // años + meses
+  // ---------- Auth ----------
+  const [session, setSession] = useState(undefined); // undefined = cargando, null = sin sesion
+  const [tree, setTree] = useState([]);
   const [selectedMonthId, setSelectedMonthId] = useState(null);
   const [monthData, setMonthData] = useState(null);
   const [series, setSeries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [tcDelDia, setTcDelDia] = useState(null);
+
+  // Sesion: leer la actual y suscribirse a cambios
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Cotizacion del dolar tarjeta del dia
+  useEffect(() => {
+    if (!session) return;
+    getDolarTarjeta().then((r) => setTcDelDia(r.venta));
+  }, [session]);
 
   // Año al que pertenece el mes seleccionado
   const currentYear = useMemo(
@@ -26,7 +44,7 @@ export default function Home() {
     [tree, selectedMonthId]
   );
 
-  // ---------- Carga inicial ----------
+  // ---------- Carga inicial (solo con sesion) ----------
   const loadTree = useCallback(async () => {
     const t = await db.fetchYearsTree();
     setTree(t);
@@ -34,10 +52,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!session) { setLoading(false); return; }
+    setLoading(true);
     (async () => {
       try {
         const t = await loadTree();
-        // mes por defecto: el actual si existe, sino el primero disponible
         const now = new Date();
         let target = null;
         for (const y of t) {
@@ -54,7 +73,7 @@ export default function Home() {
         setLoading(false);
       }
     })();
-  }, [loadTree]);
+  }, [session, loadTree]);
 
   // ---------- Carga del mes seleccionado ----------
   const reloadMonth = useCallback(async () => {
@@ -72,17 +91,29 @@ export default function Home() {
   useEffect(() => { reloadMonth(); }, [reloadMonth]);
   useEffect(() => { reloadSeries(); }, [reloadSeries, monthData]);
 
-  // ---------- Wrapper para mutaciones (recarga tras cada acción) ----------
   const run = async (fn) => {
     try {
       await fn();
       await reloadMonth();
     } catch (e) {
-      alert('Ocurrió un error: ' + (e.message || e));
+      alert('Ocurrio un error: ' + (e.message || e));
     }
   };
 
-  // ---------- Cálculos del mes ----------
+  // ---------- Estado de congelado del mes ----------
+  const monthFrozen = !!monthData?.month?.tc_congelado;
+  const tcCongelado = monthData?.month?.tc_congelado || null;
+
+  // monto en pesos de un gasto de tarjeta (USD usa tc_aplicado o el del dia)
+  const cardArs = (e) => {
+    if (e.moneda === 'USD') {
+      const tc = e.tc_aplicado ?? tcDelDia ?? 0;
+      return Number(e.monto_total || 0) * tc;
+    }
+    return Number(e.monto_total_ars ?? (e.monto_total || 0));
+  };
+
+  // ---------- Calculos del mes (todo en pesos) ----------
   const totals = useMemo(() => {
     if (!monthData) return { ingresos: 0, gastos: 0, diferencia: 0 };
     const salary = Number(monthData.month?.salary || 0);
@@ -96,22 +127,23 @@ export default function Home() {
         s +
         c.expenses.reduce((ss, e) => {
           const n = (e.compartido_con?.length || 0) + 1;
-          return ss + Number(e.monto_total || 0) / n; // mi parte
+          return ss + cardArs(e) / n; // mi parte en pesos
         }, 0),
       0
     );
     const gastos = personal + house + card;
     return { ingresos, gastos, diferencia: ingresos - gastos };
-  }, [monthData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthData, tcDelDia]);
 
   const autoIncomes = monthData?.incomes.filter((i) => i.auto) || [];
 
   // ---------- Acciones de año ----------
   const handleAddYear = async () => {
-    const input = prompt('¿Qué año querés agregar? (ej: 2028)');
+    const input = prompt('Que año queres agregar? (ej: 2028)');
     if (!input) return;
     const year = parseInt(input, 10);
-    if (!year || year < 2000 || year > 2100) { alert('Año inválido.'); return; }
+    if (!year || year < 2000 || year > 2100) { alert('Año invalido.'); return; }
     try {
       await db.createYear(year);
       const t = await loadTree();
@@ -123,7 +155,7 @@ export default function Home() {
   };
 
   const handleDeleteYear = async (y) => {
-    if (!confirm(`¿Eliminar el año ${y.year} y todos sus datos? Esta acción no se puede deshacer.`)) return;
+    if (!confirm('Eliminar el año ' + y.year + ' y todos sus datos? Esta accion no se puede deshacer.')) return;
     try {
       await db.deleteYear(y.id);
       const t = await loadTree();
@@ -133,6 +165,17 @@ export default function Home() {
     } catch (e) {
       alert('No se pudo eliminar el año: ' + (e.message || e));
     }
+  };
+
+  // ---------- Congelar / descongelar ----------
+  const handleFreeze = async () => {
+    if (!tcDelDia) { alert('No se pudo obtener la cotizacion del dolar. Proba de nuevo.'); return; }
+    if (!confirm('Congelar las conversiones de este mes al dolar tarjeta de hoy (' + formatMoney(tcDelDia) + ')?')) return;
+    await run(() => db.freezeMonth(selectedMonthId, tcDelDia));
+  };
+  const handleUnfreeze = async () => {
+    if (!confirm('Descongelar? Las conversiones volveran a actualizarse con el dolar del dia.')) return;
+    await run(() => db.unfreezeMonth(selectedMonthId));
   };
 
   // ---------- Exportar Excel ----------
@@ -149,12 +192,23 @@ export default function Home() {
     }
   };
 
-  // ---------- Render ----------
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // ---------- Render: estados de auth ----------
+  if (session === undefined) {
+    return <div className="loader"><div className="spinner" /><span>Cargando...</span></div>;
+  }
+  if (session === null) {
+    return <Login onLogged={() => {}} />;
+  }
+
   if (loading) {
     return (
       <div className="loader">
         <div className="spinner" />
-        <span>Cargando tus finanzas…</span>
+        <span>Cargando tus finanzas...</span>
       </div>
     );
   }
@@ -165,9 +219,6 @@ export default function Home() {
         <i className="ti ti-alert-triangle" style={{ fontSize: 32, color: 'var(--danger)' }} />
         <span>No se pudieron cargar los datos.</span>
         <span style={{ fontSize: 12, maxWidth: 360, textAlign: 'center' }}>{err}</span>
-        <span style={{ fontSize: 12, color: 'var(--text-mut)', maxWidth: 380, textAlign: 'center' }}>
-          Revisá que las variables NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY estén configuradas y que el esquema SQL esté cargado.
-        </span>
       </div>
     );
   }
@@ -176,7 +227,7 @@ export default function Home() {
 
   return (
     <div className="app">
-      <button className="menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Abrir menú">
+      <button className="menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Abrir menu">
         <i className="ti ti-menu-2" />
       </button>
       {menuOpen && <div className="scrim" onClick={() => setMenuOpen(false)} />}
@@ -189,13 +240,15 @@ export default function Home() {
         onDeleteYear={handleDeleteYear}
         show={menuOpen}
         onCloseMobile={() => setMenuOpen(false)}
+        userEmail={session.user?.email}
+        onLogout={handleLogout}
       />
 
       <main className="main">
         <div className="page-head">
           <div>
             <h2>
-              {selectedMonth ? `${MONTH_NAMES[selectedMonth.month - 1]} ${currentYear.year}` : 'Gestión de gastos'}
+              {selectedMonth ? MONTH_NAMES[selectedMonth.month - 1] + ' ' + currentYear.year : 'Gestion de gastos'}
             </h2>
             <p className="sub">Resumen de ingresos y gastos del mes</p>
           </div>
@@ -204,7 +257,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Métricas resumen */}
         <div className="metrics">
           <div className="metric">
             <div className="mh">
@@ -260,9 +312,14 @@ export default function Home() {
 
             <Cards
               cards={monthData.cards}
+              monthFrozen={monthFrozen}
+              tcDelDia={tcDelDia}
+              tcCongelado={tcCongelado}
               onAdd={(cardId, p) => run(() => db.addCardExpense(cardId, p))}
               onUpdate={(cardId, expId, p) => run(() => db.updateCardExpense(expId, p))}
               onDelete={(cardId, expId) => run(() => db.deleteCardExpense(expId))}
+              onFreeze={handleFreeze}
+              onUnfreeze={handleUnfreeze}
             />
 
             <Stats monthlySeries={series} current={totals} />

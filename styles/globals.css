@@ -350,18 +350,95 @@ a { color: inherit; text-decoration: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- Mobile ---------- */
+/* ---------- Login ---------- */
+.login-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--green-700); padding: 20px;
+  background-image: radial-gradient(circle at 20% 20%, rgba(217,164,65,0.18), transparent 40%),
+                    radial-gradient(circle at 80% 80%, rgba(217,164,65,0.10), transparent 45%);
+}
+.login-card {
+  background: var(--paper); border-radius: 22px; padding: 34px 30px;
+  width: 100%; max-width: 380px; box-shadow: var(--shadow-lg); animation: pop .25s ease;
+}
+.login-brand { text-align: center; margin-bottom: 24px; }
+.login-brand .logo {
+  width: 54px; height: 54px; border-radius: 15px; background: var(--gold-400);
+  display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;
+}
+.login-brand .logo i { font-size: 28px; color: #2B2208; }
+.login-brand h1 { font-size: 21px; font-weight: 600; margin: 0; color: var(--green-900); }
+.login-brand p { font-size: 13px; color: var(--text-mut); margin: 6px 0 0; }
+.login-error {
+  background: var(--danger-bg); color: var(--danger); font-size: 13px;
+  padding: 10px 12px; border-radius: var(--r-sm); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.login-btn { width: 100%; justify-content: center; padding: 12px; font-size: 14px; margin-top: 6px; }
+.spinner-sm {
+  width: 18px; height: 18px; border: 2px solid rgba(43,34,8,0.3);
+  border-top-color: #2B2208; border-radius: 50%; animation: spin .7s linear infinite;
+}
+
+/* ---------- Logout en sidebar ---------- */
+.sidebar-foot {
+  margin-top: auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1);
+}
+.logout-btn {
+  width: 100%; background: transparent; border: none; color: #C7D4CE;
+  font-size: 13px; padding: 9px 8px; border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 9px; transition: background .15s, color .15s;
+}
+.logout-btn:hover { background: rgba(255,255,255,0.08); color: #F4EFE3; }
+.user-chip { font-size: 11.5px; color: #9DB0A9; padding: 0 8px 8px; word-break: break-all; }
+
+/* ---------- Dólar badge ---------- */
+.usd-tag {
+  font-size: 10.5px; background: var(--green-100); color: var(--ok);
+  border-radius: 8px; padding: 1px 6px; font-weight: 600; margin-left: 6px;
+}
+.tc-info {
+  font-size: 12px; color: var(--text-mut); display: flex; align-items: center; gap: 6px;
+}
+.freeze-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--gold-50); border: 1px solid var(--gold-100);
+  border-radius: var(--r-md); padding: 10px 12px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.freeze-bar .fb-text { font-size: 12.5px; color: var(--gold-600); display: flex; align-items: center; gap: 7px; }
+.frozen-badge {
+  font-size: 11px; background: var(--green-100); color: var(--ok);
+  border-radius: 10px; padding: 2px 9px; display: inline-flex; align-items: center; gap: 4px;
+}
+.seg {
+  display: inline-flex; background: var(--cream); border-radius: 10px; padding: 3px; gap: 2px;
+}
+.seg button {
+  border: none; background: transparent; font-size: 12.5px; padding: 6px 12px;
+  border-radius: 8px; cursor: pointer; color: var(--text-mut); transition: all .15s;
+}
+.seg button.on { background: var(--paper); color: var(--green-900); font-weight: 600; box-shadow: var(--shadow); }
+
+/* ---------- Responsive ---------- */
 .menu-toggle { display: none; }
+
+/* Tablets */
+@media (max-width: 980px) {
+  .main { padding: 26px 22px 50px; }
+}
+
+/* Tablet/móvil: sidebar como drawer */
 @media (max-width: 860px) {
   .app { flex-direction: column; }
   .sidebar {
-    position: fixed; left: 0; top: 0; bottom: 0; z-index: 90;
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 90; width: 260px;
     transform: translateX(-100%); transition: transform .25s ease;
     border-radius: 0 24px 24px 0; height: 100vh;
   }
   .sidebar.show { transform: translateX(0); box-shadow: var(--shadow-lg); }
-  .main { padding: 70px 18px 50px; max-width: 100%; }
+  .main { padding: 70px 16px 50px; max-width: 100%; }
   .menu-toggle {
-    display: flex; position: fixed; top: 16px; left: 16px; z-index: 80;
+    display: flex; position: fixed; top: 14px; left: 14px; z-index: 80;
     width: 42px; height: 42px; border-radius: 12px; border: none;
     background: var(--green-700); color: #fff; align-items: center; justify-content: center;
     cursor: pointer; box-shadow: var(--shadow);
@@ -369,4 +446,34 @@ a { color: inherit; text-decoration: none; }
   .menu-toggle i { font-size: 20px; }
   .metrics { grid-template-columns: 1fr; }
   .scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 85; }
+  .page-head h2 { font-size: 20px; }
+}
+
+/* Móvil: tablas con scroll horizontal y cards más compactas */
+@media (max-width: 600px) {
+  .main { padding: 66px 12px 40px; }
+  .card { padding: 14px 13px; border-radius: 14px; }
+  .card-head { flex-wrap: wrap; gap: 8px; }
+  .card-head h3 { font-size: 14.5px; }
+  .metric { padding: 13px 14px; }
+  .metric .mv { font-size: 20px; }
+  .page-head { gap: 10px; }
+  .page-head h2 { font-size: 18px; }
+  .page-head .btn { font-size: 12px; padding: 8px 12px; }
+
+  /* Las tablas anchas (tarjetas) scrollean en horizontal */
+  .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl-scroll .tbl { min-width: 560px; }
+
+  .balance-grid { grid-template-columns: repeat(2, 1fr); }
+  .cc-head { padding: 11px 12px; }
+  .cc-head .ccname { font-size: 13px; }
+  .modal { padding: 20px 18px; }
+  .field .two { grid-template-columns: 1fr 1fr; }
+}
+
+/* Móvil chico */
+@media (max-width: 380px) {
+  .balance-grid { grid-template-columns: 1fr; }
+  .login-card { padding: 26px 20px; }
 }

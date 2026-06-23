@@ -9,6 +9,8 @@ export default function Sidebar({
   onDeleteYear,
   show,
   onCloseMobile,
+  userEmail,
+  onLogout,
 }) {
   // Qué años están expandidos. Por defecto, el primero abierto.
   const [open, setOpen] = useState(() => {
@@ -64,6 +66,13 @@ export default function Sidebar({
       <button className="add-year-btn" onClick={onAddYear}>
         <i className="ti ti-plus" /> Agregar año
       </button>
+
+      <div className="sidebar-foot">
+        {userEmail && <div className="user-chip"><i className="ti ti-user" /> {userEmail}</div>}
+        <button className="logout-btn" onClick={onLogout}>
+          <i className="ti ti-logout" /> Cerrar sesión
+        </button>
+      </div>
     </aside>
   );
 }
