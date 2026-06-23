@@ -477,3 +477,26 @@ a { color: inherit; text-decoration: none; }
   .balance-grid { grid-template-columns: 1fr; }
   .login-card { padding: 26px 20px; }
 }
+
+/* ---------- Checkbox de gasto fijo ---------- */
+.checkbox-row {
+  display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
+  background: var(--cream-100); border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: 11px 12px; margin-bottom: 4px;
+  transition: border-color .15s, background .15s;
+}
+.checkbox-row:hover { border-color: var(--gold-400); background: var(--gold-50); }
+.checkbox-row input[type="checkbox"] {
+  width: 17px; height: 17px; margin-top: 1px; accent-color: var(--gold-500); cursor: pointer; flex-shrink: 0;
+}
+.checkbox-row span { font-size: 13px; color: var(--text); line-height: 1.4; }
+.checkbox-row small { color: var(--text-mut); font-size: 12px; }
+
+/* ---------- Aviso de propagación (cuotas) ---------- */
+.prop-note {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: var(--green-50); border: 1px solid var(--green-100);
+  color: var(--ok); font-size: 12.5px; line-height: 1.4;
+  border-radius: var(--r-sm); padding: 10px 12px; margin-top: 8px;
+}
+.prop-note i { font-size: 15px; margin-top: 1px; flex-shrink: 0; }

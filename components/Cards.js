@@ -67,7 +67,10 @@ export default function Cards({
     };
     if (!payload.concepto) return;
     if (editing.expense) onUpdate(editing.cardId, editing.expense.id, payload);
-    else onAdd(editing.cardId, payload);
+    else {
+      const opts = { cuotas: payload.cuota_total > payload.cuota_actual };
+      onAdd(editing.cardId, payload, opts);
+    }
     setEditing(null);
   };
 
@@ -77,7 +80,7 @@ export default function Cards({
         <h3><i className="ti ti-credit-card hi" /> Tarjetas</h3>
         {tcDelDia != null && (
           <span className="tc-info">
-            <i className="ti ti-currency-dollar" /> Dolar tarjeta: {formatMoney(tcDelDia)}
+            <i className="ti ti-currency-dollar" /> Dolar oficial: {formatMoney(tcDelDia)}
           </span>
         )}
       </div>
@@ -258,7 +261,7 @@ function CardExpenseForm({ initial, tcDelDia, tcCongelado, monthFrozen, onSave, 
         {esUSD && (
           <div className="small">
             {tc
-              ? <>Conversion a pesos ({monthFrozen ? 'congelado' : 'dolar tarjeta'} {formatMoney(tc)}): <strong>{formatMoney(montoArs)}</strong></>
+              ? <>Conversion a pesos ({monthFrozen ? 'congelado' : 'dolar oficial'} {formatMoney(tc)}): <strong>{formatMoney(montoArs)}</strong></>
               : 'No se pudo obtener la cotizacion del dolar. Proba de nuevo en unos segundos.'}
           </div>
         )}
@@ -270,6 +273,11 @@ function CardExpenseForm({ initial, tcDelDia, tcCongelado, monthFrozen, onSave, 
           <input type="number" min="1" value={form.cuota_actual} onChange={(e) => set('cuota_actual', e.target.value)} placeholder="Actual" />
           <input type="number" min="1" value={form.cuota_total} onChange={(e) => set('cuota_total', e.target.value)} placeholder="Total" />
         </div>
+        {!isEdit && Number(form.cuota_total) > Number(form.cuota_actual) && (
+          <div className="prop-note">
+            <i className="ti ti-calendar-repeat" /> Se crearán las cuotas restantes en los meses siguientes (hasta {form.cuota_total}/{form.cuota_total}), creando el año próximo si hace falta.
+          </div>
+        )}
       </div>
 
       <div className="field">

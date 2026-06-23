@@ -4,7 +4,7 @@ import { formatMoney, iconForConcept } from '../lib/helpers';
 
 export default function HouseExpenses({ items, onAdd, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(null);
-  const blank = { concepto: '', monto_total: '' };
+  const blank = { concepto: '', monto_total: '', fijo: false };
 
   const save = (form) => {
     const payload = {
@@ -12,8 +12,11 @@ export default function HouseExpenses({ items, onAdd, onUpdate, onDelete }) {
       monto_total: Number(form.monto_total) || 0,
     };
     if (!payload.concepto) return;
-    if (editing?.id) onUpdate(editing.id, payload);
-    else onAdd(payload);
+    if (editing?.id) {
+      onUpdate(editing.id, payload);
+    } else {
+      onAdd(payload, { fijo: !!form.fijo });
+    }
     setEditing(null);
   };
 
@@ -73,6 +76,7 @@ function HouseForm({ initial, onSave, onCancel, isEdit }) {
   const [form, setForm] = useState({
     concepto: initial.concepto || '',
     monto_total: initial.monto_total ?? '',
+    fijo: initial.fijo ?? false,
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const compartido = (Number(form.monto_total) || 0) / 2;
@@ -88,6 +92,14 @@ function HouseForm({ initial, onSave, onCancel, isEdit }) {
         <input type="number" min="0" value={form.monto_total} onChange={(e) => set('monto_total', e.target.value)} placeholder="0" />
         <div className="small">Compartido (÷2): <strong>{formatMoney(compartido)}</strong></div>
       </div>
+
+      {!isEdit && (
+        <label className="checkbox-row">
+          <input type="checkbox" checked={form.fijo} onChange={(e) => set('fijo', e.target.checked)} />
+          <span>Gasto fijo mensual <small>— repetir en los meses siguientes hasta diciembre</small></span>
+        </label>
+      )}
+
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onCancel} style={{ color: 'var(--text-mut)' }}>Cancelar</button>
         <button className="btn btn-gold" onClick={() => onSave(form)}>{isEdit ? 'Guardar' : 'Agregar'}</button>

@@ -9,7 +9,7 @@ import Stats from '../components/Stats';
 import Login from '../components/Login';
 import { MONTH_NAMES, formatMoney } from '../lib/helpers';
 import { exportToExcel } from '../lib/exportExcel';
-import { getDolarTarjeta } from '../lib/dolar';
+import { getDolarOficial } from '../lib/dolar';
 import { supabase } from '../lib/supabaseClient';
 import * as db from '../lib/data';
 
@@ -32,10 +32,10 @@ export default function Home() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Cotizacion del dolar tarjeta del dia
+  // Cotizacion del dolar oficial del dia
   useEffect(() => {
     if (!session) return;
-    getDolarTarjeta().then((r) => setTcDelDia(r.venta));
+    getDolarOficial().then((r) => setTcDelDia(r.venta));
   }, [session]);
 
   // Año al que pertenece el mes seleccionado
@@ -91,10 +91,11 @@ export default function Home() {
   useEffect(() => { reloadMonth(); }, [reloadMonth]);
   useEffect(() => { reloadSeries(); }, [reloadSeries, monthData]);
 
-  const run = async (fn) => {
+  const run = async (fn, alsoReloadTree = false) => {
     try {
       await fn();
       await reloadMonth();
+      if (alsoReloadTree) await loadTree();
     } catch (e) {
       alert('Ocurrio un error: ' + (e.message || e));
     }
@@ -170,7 +171,7 @@ export default function Home() {
   // ---------- Congelar / descongelar ----------
   const handleFreeze = async () => {
     if (!tcDelDia) { alert('No se pudo obtener la cotizacion del dolar. Proba de nuevo.'); return; }
-    if (!confirm('Congelar las conversiones de este mes al dolar tarjeta de hoy (' + formatMoney(tcDelDia) + ')?')) return;
+    if (!confirm('Congelar las conversiones de este mes al dolar oficial de hoy (' + formatMoney(tcDelDia) + ')?')) return;
     await run(() => db.freezeMonth(selectedMonthId, tcDelDia));
   };
   const handleUnfreeze = async () => {
@@ -298,14 +299,21 @@ export default function Home() {
 
             <PersonalExpenses
               items={monthData.personal}
-              onAdd={(p) => run(() => db.addPersonal(selectedMonthId, p))}
+              onAdd={(p, opts) => run(async () => {
+                await db.addPersonal(selectedMonthId, p);
+                if (opts?.cuotas) await db.propagatePersonalInstallments(selectedMonthId, p);
+                else if (opts?.fijo) await db.propagatePersonalFixed(selectedMonthId, p);
+              }, true)}
               onUpdate={(id, p) => run(() => db.updatePersonal(id, p))}
               onDelete={(id) => run(() => db.deletePersonal(id))}
             />
 
             <HouseExpenses
               items={monthData.house}
-              onAdd={(p) => run(() => db.addHouse(selectedMonthId, p))}
+              onAdd={(p, opts) => run(async () => {
+                await db.addHouse(selectedMonthId, p);
+                if (opts?.fijo) await db.propagateHouseFixed(selectedMonthId, p);
+              }, true)}
               onUpdate={(id, p) => run(() => db.updateHouse(id, p))}
               onDelete={(id) => run(() => db.deleteHouse(id))}
             />
@@ -315,7 +323,10 @@ export default function Home() {
               monthFrozen={monthFrozen}
               tcDelDia={tcDelDia}
               tcCongelado={tcCongelado}
-              onAdd={(cardId, p) => run(() => db.addCardExpense(cardId, p))}
+              onAdd={(cardId, p, opts) => run(async () => {
+                await db.addCardExpense(cardId, p);
+                if (opts?.cuotas) await db.propagateCardInstallments(cardId, p);
+              }, true)}
               onUpdate={(cardId, expId, p) => run(() => db.updateCardExpense(expId, p))}
               onDelete={(cardId, expId) => run(() => db.deleteCardExpense(expId))}
               onFreeze={handleFreeze}

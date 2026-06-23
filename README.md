@@ -95,3 +95,25 @@ Es seguro sobre la base que ya tenés (no borra datos). Agrega:
   un copo de nieve ❄️. Podés **descongelar** cuando quieras.
 
 No hace falta ninguna variable de entorno nueva: seguís con las dos de Supabase.
+
+---
+
+## Actualización v3 — Gastos fijos, cuotas automáticas y dólar oficial
+
+No requiere cambios en la base de datos. Solo subí el código nuevo.
+
+### Gastos fijos (personales y casa)
+Al cargar un gasto nuevo aparece el checkbox **"Gasto fijo mensual"**. Si lo
+marcás, ese concepto se replica con el mismo monto en todos los meses
+siguientes hasta diciembre. No pisa meses donde ese concepto ya exista (solo
+rellena). Después editás cada mes a mano si el valor cambia.
+
+### Cuotas automáticas
+Si cargás un gasto (personal o de tarjeta) con cuota total mayor a la actual
+(ej. 1/12), se crean solas las cuotas restantes en los meses siguientes
+(2/12, 3/12... 12/12) con el mismo monto. Si la serie cruza diciembre, **se
+crea el año siguiente automáticamente** con sus meses y tarjetas.
+
+### Dólar oficial
+La conversión de gastos en USD ahora usa el **dólar oficial** (antes era
+tarjeta). Los gastos ya cargados/congelados no se modifican.

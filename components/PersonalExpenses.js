@@ -3,9 +3,9 @@ import Modal from './Modal';
 import { formatMoney, iconForConcept } from '../lib/helpers';
 
 export default function PersonalExpenses({ items, onAdd, onUpdate, onDelete }) {
-  const [editing, setEditing] = useState(null); // null | {} (nuevo) | item
+  const [editing, setEditing] = useState(null);
 
-  const blank = { concepto: '', cuota_actual: 1, cuota_total: 1, monto: '' };
+  const blank = { concepto: '', cuota_actual: 1, cuota_total: 1, monto: '', fijo: false };
 
   const save = (form) => {
     const payload = {
@@ -15,8 +15,16 @@ export default function PersonalExpenses({ items, onAdd, onUpdate, onDelete }) {
       monto: Number(form.monto) || 0,
     };
     if (!payload.concepto) return;
-    if (editing?.id) onUpdate(editing.id, payload);
-    else onAdd(payload);
+    if (editing?.id) {
+      onUpdate(editing.id, payload);
+    } else {
+      // opciones de propagacion: fijo (repetir hasta diciembre) o cuotas (>1)
+      const opts = {
+        fijo: !!form.fijo,
+        cuotas: payload.cuota_total > payload.cuota_actual,
+      };
+      onAdd(payload, opts);
+    }
     setEditing(null);
   };
 
@@ -77,8 +85,11 @@ function ExpenseForm({ initial, onSave, onCancel, isEdit }) {
     cuota_actual: initial.cuota_actual ?? 1,
     cuota_total: initial.cuota_total ?? 1,
     monto: initial.monto ?? '',
+    fijo: initial.fijo ?? false,
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const enCuotas = Number(form.cuota_total) > Number(form.cuota_actual);
 
   return (
     <Modal title={isEdit ? 'Editar gasto personal' : 'Nuevo gasto personal'} onClose={onCancel}>
@@ -98,6 +109,22 @@ function ExpenseForm({ initial, onSave, onCancel, isEdit }) {
         <label>Monto</label>
         <input type="number" min="0" value={form.monto} onChange={(e) => set('monto', e.target.value)} placeholder="0" />
       </div>
+
+      {!isEdit && (
+        <>
+          {enCuotas ? (
+            <div className="prop-note">
+              <i className="ti ti-calendar-repeat" /> Se crearán las cuotas restantes en los meses siguientes (hasta {form.cuota_total}/{form.cuota_total}).
+            </div>
+          ) : (
+            <label className="checkbox-row">
+              <input type="checkbox" checked={form.fijo} onChange={(e) => set('fijo', e.target.checked)} />
+              <span>Gasto fijo mensual <small>— repetir en los meses siguientes hasta diciembre</small></span>
+            </label>
+          )}
+        </>
+      )}
+
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onCancel} style={{ color: 'var(--text-mut)' }}>Cancelar</button>
         <button className="btn btn-gold" onClick={() => onSave(form)}>{isEdit ? 'Guardar' : 'Agregar'}</button>
