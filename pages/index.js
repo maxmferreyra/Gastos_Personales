@@ -127,8 +127,11 @@ export default function Home() {
       (s, c) =>
         s +
         c.expenses.reduce((ss, e) => {
-          const n = (e.compartido_con?.length || 0) + 1;
-          return ss + cardArs(e) / n; // mi parte en pesos
+          const personas = e.compartido_con?.length || 0;
+          // tu parte = total - lo que te devuelven (% que asumen las personas)
+          const pct = personas > 0 ? (e.pct_compartido == null ? 50 : Number(e.pct_compartido)) : 0;
+          const tuParte = cardArs(e) * (1 - pct / 100);
+          return ss + tuParte;
         }, 0),
       0
     );

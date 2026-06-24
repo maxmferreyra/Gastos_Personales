@@ -117,3 +117,26 @@ crea el año siguiente automáticamente** con sus meses y tarjetas.
 ### Dólar oficial
 La conversión de gastos en USD ahora usa el **dólar oficial** (antes era
 tarjeta). Los gastos ya cargados/congelados no se modifican.
+
+---
+
+## Actualización v4 — % compartido, gastos de otras personas y ajustes
+
+### 1. Correr la migración en Supabase
+SQL Editor → New query → pegá y ejecutá `supabase_migration_v4.sql`.
+Agrega el campo de porcentaje, actualiza el trigger de ingresos y renombra
+la tarjeta "Galicia titular" → "Galicia Maxi adicional". Seguro sobre tus datos.
+
+### 2. Gastos compartidos con porcentaje
+En un gasto de tarjeta, al agregar personas en "Compartido con" aparece el
+campo **"% que asumen ellos"** (botones 33/50/66/100 o valor libre):
+- Es el % del gasto que te devuelven entre todas las personas (repartido igual).
+- Ejemplos: Chino 100% = te devuelve todo (la entrada que pusiste vos pero es de él);
+  Chino 50% = mitad y mitad; Guille+Pampo 66% = 33% cada uno.
+- El gasto **siempre suma completo al total de la tarjeta** (vos lo pagás).
+- El ingreso automático es el % que asumen ellos.
+- **Tu gasto real del mes** es solo la parte que NO te devuelven. Si es 100% de
+  otra persona, no te suma nada como gasto propio.
+
+> Los gastos compartidos que ya tenías quedan en 50% (como funcionaban). Si
+> alguno era de otra proporción, editalo y ajustá el %.

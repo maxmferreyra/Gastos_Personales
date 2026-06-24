@@ -273,25 +273,37 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- Credit cards (collapsible) ---------- */
 .cc {
-  border-radius: var(--r-md); background: var(--cream-100);
-  margin-bottom: 8px; overflow: hidden;
-  border: 1px solid var(--line);
+  border-radius: var(--r-md); background: var(--green-50);
+  margin-bottom: 10px; overflow: hidden;
+  border: 1px solid var(--green-100);
+  box-shadow: 0 1px 2px rgba(32,48,43,0.04);
 }
 .cc-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 13px 14px; cursor: pointer; transition: background .15s;
+  padding: 14px 15px; cursor: pointer; transition: background .15s;
+  border-left: 3px solid var(--gold-400);
 }
-.cc-head:hover { background: var(--gold-50); }
+.cc-head:hover { background: var(--green-100); }
 .cc-head .ccname { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; color: var(--green-900); }
 .cc-head .ccname i { color: var(--gold-600); font-size: 17px; }
 .cc-head .ccright { display: flex; align-items: center; gap: 12px; }
 .cc-total { font-size: 14px; font-weight: 600; color: var(--green-900); }
-.cc-owe { font-size: 11px; color: var(--ok); }
+.cc-owe { font-size: 11px; color: var(--ok); font-weight: 600; }
 .cc-chev { font-size: 16px; color: var(--text-mut); transition: transform .25s; }
 .cc-chev.open { transform: rotate(180deg); }
 .cc-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; background: var(--paper); }
 .cc-body.open { max-height: 2000px; }
 .cc-inner { padding: 6px 14px 14px; }
+
+/* ---------- Badge de % y campo de porcentaje ---------- */
+.pct-badge {
+  font-size: 10.5px; background: var(--gold-400); color: #2B2208;
+  border-radius: 8px; padding: 1px 7px; font-weight: 700; white-space: nowrap;
+}
+.pct-row { display: flex; align-items: center; gap: 10px; }
+.pct-input {
+  width: 78px !important; text-align: center;
+}
 
 /* ---------- Stats ---------- */
 .chart-wrap { position: relative; width: 100%; height: 220px; }

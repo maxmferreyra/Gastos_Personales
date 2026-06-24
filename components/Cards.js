@@ -3,10 +3,16 @@ import Modal from './Modal';
 import ChipsInput from './ChipsInput';
 import { formatMoney, iconForConcept } from '../lib/helpers';
 
-// monto compartido = total_ars / (1 + cantidad de personas)
-function sharePerPerson(totalArs, personas) {
-  const n = (personas?.length || 0) + 1;
-  return (Number(totalArs) || 0) / n;
+// Lo que te devuelven en total (en pesos) según el % que asumen las personas
+function montoQueTeDeben(totalArs, personas, pct) {
+  if (!personas || personas.length === 0) return 0;
+  const p = pct == null ? 50 : Number(pct);
+  return (Number(totalArs) || 0) * p / 100;
+}
+// Lo que te debe cada persona (parte igual)
+function sharePerPerson(totalArs, personas, pct) {
+  if (!personas || personas.length === 0) return 0;
+  return montoQueTeDeben(totalArs, personas, pct) / personas.length;
 }
 
 // monto del gasto en pesos: si es USD usa el TC (congelado o del dia)
@@ -44,7 +50,7 @@ export default function Cards({
     c.expenses.reduce((s, e) => {
       const personas = e.compartido_con || [];
       const ars = montoEnPesos(e, tcDelDia);
-      return s + sharePerPerson(ars, personas) * personas.length;
+      return s + montoQueTeDeben(ars, personas, e.pct_compartido);
     }, 0);
 
   const hayUSD = cards.some((c) => c.expenses.some((e) => e.moneda === 'USD'));
@@ -64,6 +70,7 @@ export default function Cards({
       tc_aplicado: esUSD ? tc : null,
       monto_total_ars: montoArs,
       compartido_con: form.compartido_con || [],
+      pct_compartido: Number(form.pct_compartido) || 0,
     };
     if (!payload.concepto) return;
     if (editing.expense) onUpdate(editing.cardId, editing.expense.id, payload);
@@ -137,7 +144,7 @@ export default function Cards({
                       <span>Compartido con</span>
                       <span className="right">Total</span>
                       {cardHasUSD && <span className="right">En pesos</span>}
-                      <span className="right">C/u</span>
+                      <span className="right">Te deben</span>
                       <span />
                     </div>
 
@@ -148,7 +155,8 @@ export default function Cards({
                     {c.expenses.map((e) => {
                       const personas = e.compartido_con || [];
                       const ars = montoEnPesos(e, tcDelDia);
-                      const share = sharePerPerson(ars, personas);
+                      const share = sharePerPerson(ars, personas, e.pct_compartido);
+                      const pct = e.pct_compartido == null ? 50 : Number(e.pct_compartido);
                       return (
                         <div className="tbl-row" key={e.id} style={{ gridTemplateColumns: gridCols(cardHasUSD) }}>
                           <span className="concept">
@@ -159,7 +167,10 @@ export default function Cards({
                           <span className="chips">
                             {personas.length === 0
                               ? <span style={{ color: 'var(--text-mut)', fontSize: 12 }}>—</span>
-                              : personas.map((p, i) => <span className="chip" key={i}>{p}</span>)}
+                              : <>
+                                  {personas.map((p, i) => <span className="chip" key={i}>{p}</span>)}
+                                  <span className="pct-badge" title="Porcentaje que asumen">{pct}%</span>
+                                </>}
                           </span>
                           <span className="right">
                             {e.moneda === 'USD'
@@ -174,7 +185,9 @@ export default function Cards({
                             </span>
                           )}
                           <span className="right money-share">
-                            {personas.length > 0 ? formatMoney(share) : <span style={{ color: 'var(--text-mut)' }}>—</span>}
+                            {personas.length > 0
+                              ? <span title="Te deben en total">{formatMoney(share * personas.length)}</span>
+                              : <span style={{ color: 'var(--text-mut)' }}>—</span>}
                           </span>
                           <span className="row-actions">
                             <button className="icon-btn" onClick={() => setEditing({ cardId: c.id, expense: e })} aria-label="Editar">
@@ -232,13 +245,17 @@ function CardExpenseForm({ initial, tcDelDia, tcCongelado, monthFrozen, onSave, 
     monto_total: initial?.monto_total ?? '',
     moneda: initial?.moneda || 'ARS',
     compartido_con: initial?.compartido_con || [],
+    pct_compartido: initial?.pct_compartido ?? 50,
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const esUSD = form.moneda === 'USD';
   const tc = monthFrozen ? tcCongelado : tcDelDia;
   const montoArs = esUSD ? (Number(form.monto_total) || 0) * (tc || 0) : Number(form.monto_total) || 0;
-  const share = sharePerPerson(montoArs, form.compartido_con);
+  const pct = Number(form.pct_compartido) || 0;
+  const totalTeDeben = montoArs * pct / 100;
+  const share = form.compartido_con.length > 0 ? totalTeDeben / form.compartido_con.length : 0;
+  const tuParte = montoArs - totalTeDeben;
 
   return (
     <Modal title={isEdit ? 'Editar gasto de tarjeta' : 'Nuevo gasto de tarjeta'} onClose={onCancel}>
@@ -287,12 +304,39 @@ function CardExpenseForm({ initial, tcDelDia, tcCongelado, monthFrozen, onSave, 
           onChange={(v) => set('compartido_con', v)}
           placeholder="Escribi un nombre y Enter"
         />
-        <div className="small">
-          {form.compartido_con.length > 0
-            ? <>Se divide entre vos + {form.compartido_con.length}. Cada persona te paga <strong>{formatMoney(share)}</strong>. Se crea un ingreso por cada uno.</>
-            : 'Sin compartir. Si agregas personas, se generan ingresos automaticos.'}
-        </div>
       </div>
+
+      {form.compartido_con.length > 0 && (
+        <div className="field">
+          <label>% que asumen ellos</label>
+          <div className="pct-row">
+            <div className="seg">
+              {[33, 50, 66, 100].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={pct === v ? 'on' : ''}
+                  onClick={() => set('pct_compartido', v)}
+                >{v}%</button>
+              ))}
+            </div>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={form.pct_compartido}
+              onChange={(e) => set('pct_compartido', e.target.value)}
+              className="pct-input"
+              aria-label="Porcentaje personalizado"
+            />
+          </div>
+          <div className="small">
+            {pct >= 100
+              ? <>El gasto es 100% de ellos. No te suma como gasto propio. Te deben <strong>{formatMoney(totalTeDeben)}</strong> en total ({form.compartido_con.length > 1 ? formatMoney(share) + ' c/u' : 'una persona'}).</>
+              : <>Te deben <strong>{formatMoney(totalTeDeben)}</strong> en total{form.compartido_con.length > 1 ? <> ({formatMoney(share)} c/u)</> : ''}. Tu parte (gasto real): <strong>{formatMoney(tuParte)}</strong>.</>}
+          </div>
+        </div>
+      )}
 
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onCancel} style={{ color: 'var(--text-mut)' }}>Cancelar</button>
